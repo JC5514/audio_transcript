@@ -8,6 +8,7 @@
     <form>
       <button id="recordButton" onclick="startRecording()">Start Recording</button>
       <button id="stopButton" disabled onclick="stopRecording()">Stop Recording</button>
+      <button id="downloadButton" disabled onclick="downloadRecording()">Download</button>
     </form>
 
     <audio id="audioPlayer" controls></audio>
@@ -24,6 +25,7 @@
         chunks = [];
         const recordButton = document.getElementById("recordButton");
         const stopButton = document.getElementById("stopButton");
+        const downloadButton = document.getElementById("downloadButton");
         recordButton.disabled = true;
         stopButton.disabled = false;
 
@@ -65,6 +67,9 @@
                 // Display the transcribed text in a separate component
                 const output = document.getElementById("output");
                 output.textContent = text;
+
+                // Enable the download button
+                downloadButton.disabled = false;
               })
               .catch(error => {
                 console.error(error);
@@ -81,8 +86,24 @@
         mediaRecorder.stop();
         const recordButton = document.getElementById("recordButton");
         const stopButton = document.getElementById("stopButton");
+        const downloadButton = document.getElementById("downloadButton");
         recordButton.disabled = false;
         stopButton.disabled = true;
+        downloadButton.disabled = false;
+      }
+
+      function downloadRecording() {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        document.body.appendChild(a);
+        a.style = "display: none";
+        a.href = url;
+        a.download = "recording.webm";
+        a.click();
+
+        URL.revokeObjectURL(url);
       }
     </script>
   </body>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Record and Transcribe Audio</title>
+  </head>
+  <body>
+    <form>
+      <button onclick="startRecording()">Start Recording</button>
+      <button onclick="stopRecording()">Stop Recording</button>
+    </form>
+
+    <audio id="audioPlayer" controls></audio>
+
+    <div id="output"></div>
+
+    <script>
+      const constraints = { audio: true };
+      let chunks = [];
+      let mediaRecorder;
+
+      async function startRecording() {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.addEventListener("dataavailable", event => {
+          chunks.push(event.data);
+        });
+
+        mediaRecorder.addEventListener("stop", async () => {
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          const audioURL = URL.createObjectURL(blob);
+
+          const audioPlayer = document.getElementById("audioPlayer");
+          audioPlayer.src = audioURL;
+
+          const formData = new FormData();
+          formData.append("audio", blob);
+
+          const response = await fetch("whisper-model-api-endpoint", {
+            method: "POST",
+            body: formData
+          });
+
+          const text = await response.text();
+
+          // Display the transcribed text in a separate component
+          const output = document.getElementById("output");
+          output.textContent = text;
+        });
+
+        mediaRecorder.start();
+      }
+
+      function stopRecording() {
+        mediaRecorder.stop();
+      }
+    </script>
+  </body>
+</html>

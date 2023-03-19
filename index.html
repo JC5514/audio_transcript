@@ -6,8 +6,8 @@
   </head>
   <body>
     <form>
-      <button onclick="startRecording()">Start Recording</button>
-      <button onclick="stopRecording()">Stop Recording</button>
+      <button id="recordButton" onclick="startRecording()">Start Recording</button>
+      <button id="stopButton" disabled onclick="stopRecording()">Stop Recording</button>
     </form>
 
     <audio id="audioPlayer" controls></audio>
@@ -18,42 +18,71 @@
       const constraints = { audio: true };
       let chunks = [];
       let mediaRecorder;
+      let timerInterval;
 
-      async function startRecording() {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        mediaRecorder = new MediaRecorder(stream);
+      function startRecording() {
+        chunks = [];
+        const recordButton = document.getElementById("recordButton");
+        const stopButton = document.getElementById("stopButton");
+        recordButton.disabled = true;
+        stopButton.disabled = false;
 
-        mediaRecorder.addEventListener("dataavailable", event => {
-          chunks.push(event.data);
-        });
+        const timerElement = document.createElement("span");
+        timerElement.id = "timer";
+        document.body.appendChild(timerElement);
 
-        mediaRecorder.addEventListener("stop", async () => {
-          const blob = new Blob(chunks, { type: "audio/webm" });
-          const audioURL = URL.createObjectURL(blob);
+        let seconds = 0;
+        timerInterval = setInterval(() => {
+          seconds++;
+          timerElement.textContent = `Recording time: ${seconds}s`;
+        }, 1000);
 
-          const audioPlayer = document.getElementById("audioPlayer");
-          audioPlayer.src = audioURL;
+        navigator.mediaDevices.getUserMedia(constraints)
+          .then(stream => {
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.addEventListener("dataavailable", event => {
+              chunks.push(event.data);
+            });
+            mediaRecorder.addEventListener("stop", () => {
+              clearInterval(timerInterval);
+              timerElement.remove();
 
-          const formData = new FormData();
-          formData.append("audio", blob);
+              const blob = new Blob(chunks, { type: "audio/webm" });
+              const audioURL = URL.createObjectURL(blob);
 
-          const response = await fetch("whisper-model-api-endpoint", {
-            method: "POST",
-            body: formData
+              const audioPlayer = document.getElementById("audioPlayer");
+              audioPlayer.src = audioURL;
+
+              const formData = new FormData();
+              formData.append("audio", blob);
+
+              fetch("whisper-model-api-endpoint", {
+                method: "POST",
+                body: formData
+              })
+              .then(response => response.text())
+              .then(text => {
+                // Display the transcribed text in a separate component
+                const output = document.getElementById("output");
+                output.textContent = text;
+              })
+              .catch(error => {
+                console.error(error);
+              });
+            });
+            mediaRecorder.start();
+          })
+          .catch(error => {
+            console.error(error);
           });
-
-          const text = await response.text();
-
-          // Display the transcribed text in a separate component
-          const output = document.getElementById("output");
-          output.textContent = text;
-        });
-
-        mediaRecorder.start();
       }
 
       function stopRecording() {
         mediaRecorder.stop();
+        const recordButton = document.getElementById("recordButton");
+        const stopButton = document.getElementById("stopButton");
+        recordButton.disabled = false;
+        stopButton.disabled = true;
       }
     </script>
   </body>
